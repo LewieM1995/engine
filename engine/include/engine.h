@@ -2,15 +2,17 @@
 #define ENGINE_H
 
 #include <SDL2/SDL.h>
+#include "tile_size.c"
+#include "levels.h"
 
-#define MAX_TEXTURES 32
+#define MAX_TEXTURES 100
 
 typedef struct {
     float x, y;  // position
     float rotation; // in degrees
     float scale;
     int sprite_id;
-    int layer; // for layering (background, midground, foreground)
+    int layer; // for layering
 } RenderCommand;
 
 typedef struct {
@@ -31,7 +33,8 @@ void engine_unload_all_textures();
 
 void camera_init(Camera* camera, int screen_width, int screen_height);
 void camera_follow(Camera* camera, float target_x, float target_y);
-void camera_update(Camera* camera, float steptime);
+void camera_update(Camera *cam, float steptime, Map *map, float player_x, float player_y);
+void camera_update_with_deadzone(Camera *cam, float steptime, Map *map, float player_x, float player_y);
 void camera_world_to_screen(Camera* cam, float world_x, float world_y, float* screen_x, float* screen_y);
 
 #endif

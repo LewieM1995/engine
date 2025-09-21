@@ -3,8 +3,9 @@
 
 #include "body.h"
 #include <SDL2/SDL.h>
+#include "engine.h"
 
-typedef struct {
+typedef struct Player {
     Body body;
     int health;
     int mana;
@@ -14,6 +15,6 @@ typedef struct {
 
 void player_init(Player *player, float x, float y);
 void player_update(Player *player, float dt);
-//void player_render(Player *player);
+void player_update_with_camera(Player *player, float dt, Camera *camera);
 
 #endif

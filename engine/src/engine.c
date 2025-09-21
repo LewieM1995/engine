@@ -5,26 +5,25 @@
 
 static SDL_Renderer *sdl_renderer = NULL;
 static SDL_Texture *textures[MAX_TEXTURES];
-static int texture_count = 0; // Simple texture array
+static int texture_count = 0;
 
 void engine_init(SDL_Renderer *renderer)
 {
     sdl_renderer = renderer;
 
-    // Initialize IMG for PNG loading
+    // Initialise IMG for PNG loading
     if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG))
     {
         printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
     }
 
-    // Initialize texture array
+    // Initialise texture array
     for (int i = 0; i < MAX_TEXTURES; i++)
     {
         textures[i] = NULL;
     }
     texture_count = 0;
 
-    // Load your game textures
     engine_load_texture("engine/assets/player.png"); // ID 0 (Player)
     engine_load_texture("engine/assets/floor.png");  // ID 1 (TILE_FLOOR)
     engine_load_texture("engine/assets/wall.png");   // ID 2 (TILE_WALL)
@@ -124,7 +123,6 @@ void engine_submit(RenderCommand cmd)
         {
         case 0: // Player
         {
-            // Your existing player rendering code
             float corners[4][2] = {
                 {-half_size, -half_size}, {half_size, -half_size}, {half_size, half_size}, {-half_size, half_size}};
 
@@ -213,35 +211,92 @@ void engine_end_frame()
 
 void engine_shutdown()
 {
-    // Let game/main.c handle SDL cleanup
     sdl_renderer = NULL;
 }
 
-
-void camera_init(Camera* cam, int screen_width, int screen_height) {
+void camera_init(Camera *cam, int screen_width, int screen_height)
+{
     cam->x = 0.0f;
     cam->y = 0.0f;
     cam->target_x = 0.0f;
     cam->target_y = 0.0f;
-    cam->smoothing = 0.1f;  // Adjust for smoother/snappier following
+    cam->smoothing = 0.3f;
     cam->screen_width = screen_width;
     cam->screen_height = screen_height;
 }
 
-void camera_follow(Camera* cam, float target_x, float target_y) {
+void camera_follow(Camera *cam, float target_x, float target_y)
+{
     cam->target_x = target_x;
     cam->target_y = target_y;
 }
 
-void camera_update(Camera* cam, float dt) {
-    // Smooth camera following using lerp
-    float lerp_factor = 1.0f - powf(cam->smoothing, dt * 60.0f); // 60fps normalized
+void camera_update(Camera *cam, float steptime, Map *map, float player_x, float player_y)
+{
+    // Set the camera target to follow the player
+    camera_follow(cam, player_x, player_y);
     
-    cam->x += (cam->target_x - cam->x) * lerp_factor;
-    cam->y += (cam->target_y - cam->y) * lerp_factor;
+    // Smoothly interpolate camera position towards target
+    cam->x += (cam->target_x - cam->x) * cam->smoothing;
+    cam->y += (cam->target_y - cam->y) * cam->smoothing;
+    
+    // Clamp to map bounds
+    float half_width = cam->screen_width / 2.0f;
+    float half_height = cam->screen_height / 2.0f;
+
+    if (cam->x < half_width)
+        cam->x = half_width;
+    if (cam->x > map->width * TILE_SIZE - half_width)
+        cam->x = map->width * TILE_SIZE - half_width;
+    if (cam->y < half_height)
+        cam->y = half_height;
 }
 
-void camera_world_to_screen(Camera* cam, float world_x, float world_y, float* screen_x, float* screen_y) {
+// Alternative version with deadzone (if you want the camera to only move when player gets near edges)
+void camera_update_with_deadzone(Camera *cam, float steptime, Map *map, float player_x, float player_y)
+{
+    const float deadzone_w = cam->screen_width / 6.0f;  // Smaller deadzone
+    const float deadzone_h = cam->screen_height / 6.0f;
+    
+    // Calculate screen position of player relative to current camera
+    float player_screen_x = player_x - cam->x + (cam->screen_width / 2.0f);
+    float player_screen_y = player_y - cam->y + (cam->screen_height / 2.0f);
+    
+    // Check if player is outside the deadzone and update target
+    if (player_screen_x < deadzone_w) {
+        cam->target_x = player_x - deadzone_w + (cam->screen_width / 2.0f);
+    }
+    else if (player_screen_x > cam->screen_width - deadzone_w) {
+        cam->target_x = player_x + deadzone_w - (cam->screen_width / 2.0f);
+    }
+    
+    if (player_screen_y < deadzone_h) {
+        cam->target_y = player_y - deadzone_h + (cam->screen_height / 2.0f);
+    }
+    else if (player_screen_y > cam->screen_height - deadzone_h) {
+        cam->target_y = player_y + deadzone_h - (cam->screen_height / 2.0f);
+    }
+    
+    // Smoothly move camera towards target
+    cam->x += (cam->target_x - cam->x) * cam->smoothing;
+    cam->y += (cam->target_y - cam->y) * cam->smoothing;
+    
+    // Clamp to map bounds
+    float half_width = cam->screen_width / 2.0f;
+    float half_height = cam->screen_height / 2.0f;
+
+    if (cam->x < half_width)
+        cam->x = half_width;
+    if (cam->x > map->width * TILE_SIZE - half_width)
+        cam->x = map->width * TILE_SIZE - half_width;
+    if (cam->y < half_height)
+        cam->y = half_height;
+    if (cam->y > map->height * TILE_SIZE - half_height)
+        cam->y = map->height * TILE_SIZE - half_height;
+}
+
+void camera_world_to_screen(Camera *cam, float world_x, float world_y, float *screen_x, float *screen_y)
+{
     *screen_x = world_x - cam->x + (cam->screen_width / 2.0f);
     *screen_y = world_y - cam->y + (cam->screen_height / 2.0f);
 }

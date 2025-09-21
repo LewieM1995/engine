@@ -4,37 +4,43 @@
 #include <stdbool.h>
 #include "levels.h"
 
-void render_map_with_camera(Map* map, Camera* camera) {
-    const int TILE_SIZE = 32;
-    
+void render_map_with_camera(Map *map, Camera *camera)
+{
     // Calculate visible tile range based on camera position
     float camera_left = camera->x - (camera->screen_width / 2.0f);
     float camera_top = camera->y - (camera->screen_height / 2.0f);
     float camera_right = camera_left + camera->screen_width;
     float camera_bottom = camera_top + camera->screen_height;
-    
-    int start_x = (int)(camera_left / TILE_SIZE) - 1;
-    int start_y = (int)(camera_top / TILE_SIZE) - 1;
-    int end_x = (int)(camera_right / TILE_SIZE) + 1;
-    int end_y = (int)(camera_bottom / TILE_SIZE) + 1;
-    
+
+    const int TILE_MARGIN = 1; // number of extra tiles around the screen
+    int start_x = (int)(camera_left / TILE_SIZE) - TILE_MARGIN;
+    int start_y = (int)(camera_top / TILE_SIZE) - TILE_MARGIN;
+    int end_x = (int)(camera_right / TILE_SIZE) + TILE_MARGIN;
+    int end_y = (int)(camera_bottom / TILE_SIZE) + TILE_MARGIN;
+
     // Clamp to map bounds
-    if (start_x < 0) start_x = 0;
-    if (start_y < 0) start_y = 0;
-    if (end_x >= map->width) end_x = map->width - 1;
-    if (end_y >= map->height) end_y = map->height - 1;
-    
+    if (start_x < 0)
+        start_x = 0;
+    if (start_y < 0)
+        start_y = 0;
+    if (end_x >= map->width)
+        end_x = map->width - 1;
+    if (end_y >= map->height)
+        end_y = map->height - 1;
+
     // Render visible tiles
-    for (int y = start_y; y <= end_y; y++) {
-        for (int x = start_x; x <= end_x; x++) {
-            Cell* cell = get_cell(map, x, y);
-            
+    for (int y = start_y; y <= end_y; y++)
+    {
+        for (int x = start_x; x <= end_x; x++)
+        {
+            Cell *cell = get_cell(map, x, y);
+
             // Convert world position to screen position
             float world_x = x * TILE_SIZE + (TILE_SIZE / 2); // Center of tile
             float world_y = y * TILE_SIZE + (TILE_SIZE / 2);
             float screen_x, screen_y;
             camera_world_to_screen(camera, world_x, world_y, &screen_x, &screen_y);
-            
+
             RenderCommand tile_cmd = {
                 screen_x, screen_y,
                 0.0f,            // rotation
@@ -42,7 +48,7 @@ void render_map_with_camera(Map* map, Camera* camera) {
                 cell->tile_type, // sprite_id
                 0                // layer (background)
             };
-            
+
             engine_submit(tile_cmd);
         }
     }
@@ -63,7 +69,7 @@ int main(void)
     engine_init(renderer);
     // game_init();
 
-    LevelConfig config = load_level_config(1);
+    LevelConfig config = load_level_config(2);
     Map *map = create_map(config.width, config.height);
     generate_map(map, config.seed);
 
@@ -89,11 +95,11 @@ int main(void)
             }
         }
 
-        player_update(&player, frameTime);
-
+        //player_update(&player, frameTime);
+        player_update_with_camera(&player, frameTime, &camera);
 
         camera_follow(&camera, player.body.x, player.body.y);
-        camera_update(&camera, frameTime);
+        camera_update(&camera, frameTime, map, player.body.x, player.body.y);
 
         // fixed updates
         while (accumulator >= FIXED_DT)
@@ -116,6 +122,7 @@ int main(void)
             1                      // layer
         };
         engine_submit(player_cmd);
+
         engine_end_frame();
 
         SDL_Delay(1); // prevent 100% CPU usage
@@ -129,5 +136,3 @@ int main(void)
     SDL_Quit();
     return 0;
 }
-
-

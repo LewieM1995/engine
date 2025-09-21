@@ -47,4 +47,4 @@ static inline int is_walkable(Cell* cell) {
     return cell->flags & WALKABLE;
 }
 
-#endif // LEVELS_H
+#endif

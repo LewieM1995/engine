@@ -7,7 +7,7 @@ typedef struct {
     float scale;
     float speed;
     float vx, vy;
-    int sprite_id;  // could even be here
+    int sprite_id;
 } Body;
 
-#endif // BODY_H
+#endif
