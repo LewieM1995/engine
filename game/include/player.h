@@ -14,7 +14,7 @@ typedef struct Player {
 } Player;
 
 void player_init(Player *player, float x, float y);
-void player_update(Player *player, float dt);
-void player_update_with_camera(Player *player, float dt, Camera *camera);
+void player_update(Player *player, float timestep, Camera *camera, Map *map);
+int can_move_to_with_size(Map *map, float x, float y, float player_radius);
 
 #endif

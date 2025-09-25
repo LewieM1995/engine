@@ -3,6 +3,7 @@
 #include "player.h"
 #include <stdbool.h>
 #include "levels.h"
+#include "enemy.h"
 
 void render_map_with_camera(Map *map, Camera *camera)
 {
@@ -60,18 +61,23 @@ int main(void)
     SDL_Window *window = SDL_CreateWindow("ARPG Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1920, 1080, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    Player player;
-    player_init(&player, 640, 360); // start in center
+    engine_init(renderer);
 
     Camera camera;
     camera_init(&camera, 1920, 1080);
-
-    engine_init(renderer);
     // game_init();
 
     LevelConfig config = load_level_config(2);
     Map *map = create_map(config.width, config.height);
     generate_map(map, config.seed);
+
+    Player player;
+    int spawn_x = (config.width * TILE_SIZE) / 2;
+    int spawn_y = (config.height * TILE_SIZE) / 2;
+    player_init(&player, spawn_x, spawn_y);
+
+    Enemy enemy;
+    enemy_init(&enemy, spawn_x + 100, spawn_y + 100);
 
     const float FIXED_DT = 1.0f / 60.0f;
     float accumulator = 0.0f;
@@ -95,12 +101,6 @@ int main(void)
             }
         }
 
-        //player_update(&player, frameTime);
-        player_update_with_camera(&player, frameTime, &camera);
-
-        camera_follow(&camera, player.body.x, player.body.y);
-        camera_update(&camera, frameTime, map, player.body.x, player.body.y);
-
         // fixed updates
         while (accumulator >= FIXED_DT)
         {
@@ -110,18 +110,36 @@ int main(void)
         }
 
         engine_begin_frame();
-
         render_map_with_camera(map, &camera);
 
+        enemy_update(&enemy, frameTime, map);
+        player_update(&player, frameTime, &camera, map);
+        camera_update(&camera, frameTime, map, player.body.x, player.body.y);
+
+        float player_screen_x, player_screen_y;
+        camera_world_to_screen(&camera, player.body.x, player.body.y, &player_screen_x, &player_screen_y);
+
         RenderCommand player_cmd = {
-            player.body.x,         // x
-            player.body.y,         // y
-            player.body.rotation,  // rotation
-            player.body.scale,     // scale
-            player.body.sprite_id, // sprite_id
-            1                      // layer
-        };
+            player_screen_x,
+            player_screen_y,
+            player.body.rotation,
+            player.body.scale,
+            player.body.sprite_id,
+            1};
         engine_submit(player_cmd);
+
+        float enemy_screen_x, enemy_screen_y;
+        camera_world_to_screen(&camera, enemy.body.x, enemy.body.y, &enemy_screen_x, &enemy_screen_y);
+
+        RenderCommand enemy_cmd = {
+            enemy_screen_x,
+            enemy_screen_y,
+            enemy.body.rotation,
+            enemy.body.scale,
+            enemy.body.sprite_id,
+            1                  
+        };
+        engine_submit(enemy_cmd);
 
         engine_end_frame();
 

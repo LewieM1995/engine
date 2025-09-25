@@ -6,7 +6,6 @@
 #define LEVELS_H
 
 #define WALKABLE 0x01
-#define TRANSPARENT 0x02
 #define DOOR 0x04
 #define WALL 0x08
 #define FLOOR 0x10
@@ -15,6 +14,8 @@
 #define TILE_WALL 2  
 #define TILE_DOOR 3
 #define TILE_WATER 4
+
+#define TILE_ENEMY 5
 
 typedef struct {
     uint8_t flags;

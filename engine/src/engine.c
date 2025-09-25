@@ -220,7 +220,7 @@ void camera_init(Camera *cam, int screen_width, int screen_height)
     cam->y = 0.0f;
     cam->target_x = 0.0f;
     cam->target_y = 0.0f;
-    cam->smoothing = 0.3f;
+    cam->smoothing = 0.9f;
     cam->screen_width = screen_width;
     cam->screen_height = screen_height;
 }
@@ -234,69 +234,40 @@ void camera_follow(Camera *cam, float target_x, float target_y)
 void camera_update(Camera *cam, float steptime, Map *map, float player_x, float player_y)
 {
     // Set the camera target to follow the player
-    camera_follow(cam, player_x, player_y);
+    cam->target_x = player_x;
+    cam->target_y = player_y;
     
     // Smoothly interpolate camera position towards target
-    cam->x += (cam->target_x - cam->x) * cam->smoothing;
-    cam->y += (cam->target_y - cam->y) * cam->smoothing;
+    // For frame-rate independent smoothing:
+    float smooth_factor = 1.0f - powf(1.0f - cam->smoothing, steptime * 60.0f);
+    cam->x += (cam->target_x - cam->x) * smooth_factor;
+    cam->y += (cam->target_y - cam->y) * smooth_factor;
     
     // Clamp to map bounds
     float half_width = cam->screen_width / 2.0f;
     float half_height = cam->screen_height / 2.0f;
+    
+    float map_width = map->width * TILE_SIZE;
+    float map_height = map->height * TILE_SIZE;
 
     if (cam->x < half_width)
         cam->x = half_width;
-    if (cam->x > map->width * TILE_SIZE - half_width)
-        cam->x = map->width * TILE_SIZE - half_width;
+    if (cam->x > map_width - half_width)
+        cam->x = map_width - half_width;
     if (cam->y < half_height)
         cam->y = half_height;
-}
-
-// Alternative version with deadzone (if you want the camera to only move when player gets near edges)
-void camera_update_with_deadzone(Camera *cam, float steptime, Map *map, float player_x, float player_y)
-{
-    const float deadzone_w = cam->screen_width / 6.0f;  // Smaller deadzone
-    const float deadzone_h = cam->screen_height / 6.0f;
-    
-    // Calculate screen position of player relative to current camera
-    float player_screen_x = player_x - cam->x + (cam->screen_width / 2.0f);
-    float player_screen_y = player_y - cam->y + (cam->screen_height / 2.0f);
-    
-    // Check if player is outside the deadzone and update target
-    if (player_screen_x < deadzone_w) {
-        cam->target_x = player_x - deadzone_w + (cam->screen_width / 2.0f);
-    }
-    else if (player_screen_x > cam->screen_width - deadzone_w) {
-        cam->target_x = player_x + deadzone_w - (cam->screen_width / 2.0f);
-    }
-    
-    if (player_screen_y < deadzone_h) {
-        cam->target_y = player_y - deadzone_h + (cam->screen_height / 2.0f);
-    }
-    else if (player_screen_y > cam->screen_height - deadzone_h) {
-        cam->target_y = player_y + deadzone_h - (cam->screen_height / 2.0f);
-    }
-    
-    // Smoothly move camera towards target
-    cam->x += (cam->target_x - cam->x) * cam->smoothing;
-    cam->y += (cam->target_y - cam->y) * cam->smoothing;
-    
-    // Clamp to map bounds
-    float half_width = cam->screen_width / 2.0f;
-    float half_height = cam->screen_height / 2.0f;
-
-    if (cam->x < half_width)
-        cam->x = half_width;
-    if (cam->x > map->width * TILE_SIZE - half_width)
-        cam->x = map->width * TILE_SIZE - half_width;
-    if (cam->y < half_height)
-        cam->y = half_height;
-    if (cam->y > map->height * TILE_SIZE - half_height)
-        cam->y = map->height * TILE_SIZE - half_height;
+    if (cam->y > map_height - half_height) 
+        cam->y = map_height - half_height;
 }
 
 void camera_world_to_screen(Camera *cam, float world_x, float world_y, float *screen_x, float *screen_y)
 {
     *screen_x = world_x - cam->x + (cam->screen_width / 2.0f);
     *screen_y = world_y - cam->y + (cam->screen_height / 2.0f);
+}
+
+void camera_screen_to_world(Camera *cam, float screen_x, float screen_y, float *world_x, float *world_y)
+{
+    *world_x = screen_x - (cam->screen_width / 2.0f) + cam->x;
+    *world_y = screen_y - (cam->screen_height / 2.0f) + cam->y;
 }
